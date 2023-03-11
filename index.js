@@ -5,6 +5,7 @@ const cors = require('cors')
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { query } = require('express')
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 
 app.use(cors())
@@ -21,11 +22,46 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
         const ordersCollection = client.db("techBazar").collection("orders")
         const usersCollection = client.db("techBazar").collection("users")
         const advertiseCollection = client.db("techBazar").collection("advertise")
+        const paymentsCollection = client.db("techBazar").collection("payments")
 
         app.get('/category', async(req,res)=>{
             const query = {}
             const result = await categoryCollection.find(query).toArray()
             res.send(result);
+        })
+
+        // payment
+        app.post('/create-payment-intent', async(req, res)=>{
+            const booking = req.body
+            const price = booking.price
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: "usd",
+                amount:  amount,
+                "payment_method_types": [
+                    "card"
+                  ],
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+              });
+        })
+
+        //payment info save
+
+        app.post('/payments',async(req, res)=>{
+            const payment = req.body
+            const result = await paymentsCollection.insertOne(payment)
+            const id = payment.OrderId
+            const filter = {_id: new ObjectId(id)}
+            const updateDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const updateResult = await ordersCollection.updateOne(filter, updateDoc)
+            res.send(result)
         })
 
         app.post('/products',async(req,res)=>{
@@ -65,6 +101,13 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
             const result = await productsCollection.find(query).toArray()
             res.send(result);
         }) 
+            //get booking by id for payment
+        app.get('/order/:id', async(req,res)=> {
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)}
+            const result = await ordersCollection.findOne(query)
+            res.send(result)
+        })
             //if admin
         app.get('/users/admin/:email', async(req,res)=> {
             const email = req.params.email;
