@@ -139,7 +139,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
             //delete buyer
             app.delete('/users/:id',async(req,res)=>{
                 const id = req.params.id
-                const query = {_id:ObjectId(id)}
+                const query = {_id:new ObjectId(id)}
                 const result = await usersCollection.deleteOne(query)
                 res.send(result)
             })
@@ -167,7 +167,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
         app.delete('/orders/:id', async(req,res)=> {
             const id = req.params.id;
-            const query = {_id:ObjectId(id)}
+            const query = {_id: new ObjectId(id)}
             const deletorders = await ordersCollection.deleteOne(query);
             res.send(deletorders)
         })
